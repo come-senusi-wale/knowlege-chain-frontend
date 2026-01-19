@@ -1,4 +1,4 @@
-export const tokenAbi = [
+export const nftTokenAbi = [
     {
       "inputs": [
         {

@@ -1,5 +1,5 @@
 import { axiosInstance } from "./axios";
-import { ICheckEmail, ICreateAccount, ICreateProfile, IVerifyEmail } from "./user.interface";
+import { ICheckEmail, ICreateAccount, ICreateProfile, IInitNairaPayment, IVerifyEmail, IVerifyNairaPayment } from "./user.interface";
 
 export const createAccount = (body: ICreateAccount) => {
     return axiosInstance().post("/user/create-account", body);
@@ -32,4 +32,12 @@ export const getYourTest = (query: ICheckEmail) => {
 
 export const checkTest = (query: ICheckEmail) => {
     return axiosInstance().get(`/user/check-test-link?walletAddress=${query.walletAddress}`);
+}
+
+export const initNairaPayment = (body: IInitNairaPayment) => {
+    return axiosInstance().post("/user/init-payment", body);
+}
+
+export const verifyNairaPayment = (body: IVerifyNairaPayment) => {
+    return axiosInstance().post("/user/verify-payment", body);
 }

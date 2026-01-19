@@ -1,8 +1,7 @@
 "use client"
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { ethers, parseUnits, hexlify } from 'ethers';
-import { tokenAbi } from './abi/tokenAbi';
-import { chainId, currencyDecimal, currencyName, currencySymbol, factoryContractAddress, networkName, routerContractAddress, rpc } from './constant';
+import { nftTokenAbi } from './abi/tokenAbi';
 import { createAccount, getUserAccount } from '@/api/user';
 import { toast } from "react-toastify";
 
@@ -14,7 +13,8 @@ interface BlockchainContextProps {
     walletAddress: string | null;
     connectWallet: () => Promise<void>;
     disconnectWallet: () => void;
-    tokenContractFunction: (contractAdress: string, methodName: string, args: any[]) => Promise<any>;
+    nftTokenContractFunction: (contractAdress: string, methodName: string, args: any[]) => Promise<any>;
+    isConnected: boolean
 }
 
 const BlockchainContext = createContext<BlockchainContextProps | undefined>(undefined);
@@ -29,17 +29,9 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     // Smart contract details
     const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!;
     const CONTRACT_ABI: any = [ /* Add your ABI here */ ];
-    const TOKON_ABI: any = tokenAbi
+    const TOKON_ABI: any = nftTokenAbi
   
     const connectWallet = async () => {
-      
-      // toast.error("Enter amount", {
-      //   position: toast.POSITION.TOP_RIGHT
-      // });
-
-      // toast.success("Wallet connected 🎉");
-
-      // toast.error("MetaMask not installed");
 
       try {
         if (!window.ethereum) {
@@ -49,29 +41,42 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
         const accounts = await window.ethereum.request({ method: "eth_requestAccounts" }); //goooooo
 
-        const polygonChainIdHex = "0x89"; // 137
+        // const polygonChainIdHex = "0x89"; // 137
+        const HARDHAT_CHAIN_ID = '0x7A69' // 31337 in hex
 
         try {
           await window.ethereum.request({
             method: "wallet_switchEthereumChain",
-            params: [{ chainId: polygonChainIdHex }],
+            params: [{ chainId: HARDHAT_CHAIN_ID }],
           });
         } catch (switchError: any) {
           // 2️⃣ If Polygon is not added, add it
           if (switchError.code === 4902) {
             await window.ethereum.request({
               method: "wallet_addEthereumChain",
+              // params: [
+              //   {
+              //     chainId: polygonChainIdHex,
+              //     chainName: "Polygon Mainnet",
+              //     rpcUrls: ["https://polygon-rpc.com"],
+              //     nativeCurrency: {
+              //       name: "MATIC",
+              //       symbol: "MATIC",
+              //       decimals: 18,
+              //     },
+              //     blockExplorerUrls: ["https://polygonscan.com"],
+              //   },
+              // ],
               params: [
                 {
-                  chainId: polygonChainIdHex,
-                  chainName: "Polygon Mainnet",
-                  rpcUrls: ["https://polygon-rpc.com"],
+                  chainId: HARDHAT_CHAIN_ID,
+                  chainName: 'Hardhat Local',
+                  rpcUrls: ['http://127.0.0.1:8545'],
                   nativeCurrency: {
-                    name: "MATIC",
-                    symbol: "MATIC",
+                    name: 'ETH',
+                    symbol: 'ETH',
                     decimals: 18,
                   },
-                  blockExplorerUrls: ["https://polygonscan.com"],
                 },
               ],
             });
@@ -107,6 +112,8 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
             setWalletAddress(wallet);
           }
 
+          localStorage.setItem('walletConnected', 'true')
+
         }).catch((e: any) => {
           alert("Unable to connect your wallet")
         })
@@ -122,12 +129,22 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setSigner(null);
         setWalletAddress(null);
         setContract(null);
+        localStorage.removeItem('walletConnected')
         if (window.ethereum?.removeAllListeners) {
             window.ethereum.removeAllListeners();
         }
     };
 
-    const tokenContractFunction = async (contractAdress: string, methodName: string, args: any[]) => {
+    useEffect(() => {
+      const wasConnected =
+        localStorage.getItem('walletConnected')
+  
+      if (wasConnected && window.ethereum) {
+        connectWallet()
+      }
+    }, [])
+
+    const nftTokenContractFunction = async (contractAdress: string, methodName: string, args: any[]) => {
         if (!signer) {
           connectWallet()
         } 
@@ -145,7 +162,7 @@ export const BlockchainProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     
     return (
       <BlockchainContext.Provider
-        value={{ provider, signer, walletAddress, connectWallet, disconnectWallet, tokenContractFunction, }}
+        value={{ provider, signer, walletAddress, connectWallet, disconnectWallet, nftTokenContractFunction, isConnected: !!walletAddress, }}
       >
         {children}
       </BlockchainContext.Provider>
@@ -159,5 +176,3 @@ export const useBlockchain = (): BlockchainContextProps => {
     }
     return context;
 };
-
-0x8E0dFf1DCd32ACC82B7Bd5a5351CAa3b182339D4

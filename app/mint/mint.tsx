@@ -1,75 +1,157 @@
 'use client'
 
-import { NFT_ABI, NFT_ADDRESS, USDC_ABI, USDC_ADDRESS } from '@/lib/contract'
-import axios from 'axios'
+import { initNairaPayment } from "@/api/user";
+import { useBlockchain } from "../../blockchain/blockchainContext";
+import { useEffect, useState } from 'react'
+import { approveContract, mintNft } from "@/blockchain/mint";
+import { nftContractAddress, } from "../../blockchain/constant";
+import { formatEther} from "ethers";
 
-const USDC_AMOUNT = '10' // 10 USDC example
+let USDC_AMOUNT = 2 // 10 USDC example
+const NAIRA_AMOUNT = '15000' // example ₦ price
 
 export default function MintPage() {
-//   const { address, isConnected } = useAccount()
-//   const { writeContractAsync } = useWriteContract()
 
-//   const handleMint = async () => {
-//     if (!address) return alert('Connect wallet first')
+  const [baseUrl, setBaseUrl] = useState('')
 
-//     try {
-//       // 1. Approve USDC
-//       await writeContractAsync({
-//         address: USDC_ADDRESS,
-//         abi: USDC_ABI,
-//         functionName: 'approve',
-//         args: [NFT_ADDRESS, parseUnits(USDC_AMOUNT, 6)] // USDC = 6 decimals
-//       })
+  const { walletAddress, signer, nftTokenContractFunction} = useBlockchain(); 
 
-//       // 2. Call backend to record payment intent
-//       await axios.post(
-//         `${process.env.NEXT_PUBLIC_API_URL}/user/payment-intent`,
-//         { wallet: address, amount: USDC_AMOUNT }
-//       )
+  const handlePayUSDC = async () => {
+    try {
+      const nftTokenBalance = await nftTokenContractFunction(nftContractAddress, "balanceOf", [walletAddress])
+      if (parseFloat(nftTokenBalance.toString()) >= 1) {
+        alert("You already made payment")
+        return
+      }
 
-//       // 3. Mint NFT
-//       await writeContractAsync({
-//         address: NFT_ADDRESS,
-//         abi: NFT_ABI,
-//         functionName: 'mint',
-//         args: [address]
-//       })
+      const mintPrice = await nftTokenContractFunction(nftContractAddress, "mintPrice", [])
+      const formattedMintPrice = parseFloat(formatEther(mintPrice.toString()))
+      console.log("formattedMintPrice", formattedMintPrice)
 
-//       // 4. Save wallet after mint
-//       await axios.post(
-//         `${process.env.NEXT_PUBLIC_API_URL}/user/wallet`,
-//         { wallet: address }
-//       )
+      if (formattedMintPrice < 1) {
+        alert("Mint price have not be set")
+        return
+      }
 
-//       alert('NFT minted successfully!')
-//     } catch (err) {
-//       console.error(err)
-//       alert('Mint failed')
-//     }
-//   }
+      const approve= await approveContract( formattedMintPrice, signer )
+      console.log("approve", approve)
+
+      if (!approve.status) {
+        alert(approve.result)
+        return
+      }
+
+      const mint= await mintNft(signer)
+      console.log("mint", mint)
+
+      if (!mint.status) {
+        alert(mint.result)
+        return
+      }
+
+      alert("Transaction in progress")
+  
+      
+    } catch (e) {
+      console.log("error", e)
+    }
+  }
+
+  const handlePayNaira = async () => {
+    try {
+      if (walletAddress == null) {
+        alert("Connect your wallet")
+        // setIsError(true)
+        return
+      }
+
+      console.log("walletAddress", walletAddress)
+
+      // const nftTokenBalance = await nftTokenContractFunction(nftContractAddress, "balanceOf", [walletAddress])
+      // if (parseFloat(nftTokenBalance.toString()) >= 1) {
+      //   alert("You already made payment")
+      //   return
+      // }
+
+      console.log(1)
+
+      const callback = `${baseUrl}/mint/verify?wallet=${walletAddress}`
+
+      console.log(2)
+
+      initNairaPayment({walletAddress: walletAddress, callback: callback}).then((res) => {
+        console.log(3)
+        const paystackUrl = res.data.data.data.url
+        localStorage.setItem('paymentRef', res.data.data.data.reference)
+
+        console.log(4)
+        
+        if (!paystackUrl) {
+          alert('Paystack URL not found')
+          return
+        }
+
+        console.log(5)
+
+        // 🔥 Redirect to Paystack
+        // window.location.href = paystackUrl
+        window.open(paystackUrl, '_blank')
+        
+   
+      }).catch((e) => {
+        alert("Unable to Initial Payment")
+        console.log("error", e)
+        return
+      })
+    } catch (err) {
+      console.error(err)
+      alert('Unable to Initial Payment')
+    }
+  }
+
+  useEffect(() => {
+    setBaseUrl(window.location.origin)
+
+  }, [])
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-purple-700 via-indigo-700 to-blue-700 text-white">
-
       <section className="max-w-xl mx-auto px-6 py-24 text-center">
-        <h1 className="text-4xl font-extrabold mb-6">Mint Knowledge NFT</h1>
+        <h1 className="text-4xl font-extrabold mb-6">
+          Mint Knowledge NFT
+        </h1>
+
         <p className="text-gray-200 mb-10">
-          Pay <strong>{USDC_AMOUNT} USDC</strong> to mint your Knowledge Chain NFT
-          and unlock access to the verification test.
+          Choose a payment method to mint your NFT and unlock access to
+          the verification test.
         </p>
 
-        {/* {!isConnected ? (
-          <p className="text-red-300">Please connect your wallet to continue.</p>
-        ) : ( */}
+        {/* PAYMENT BUTTONS */}
+        <div className="space-y-4">
+          {/* USDC BUTTON */}
           <button
-            // onClick={handleMint}
+            onClick={handlePayUSDC}
             className="w-full bg-white text-indigo-700 py-4 rounded-2xl font-bold shadow-xl hover:scale-105 transition"
           >
-            Pay USDC & Mint NFT
+            Pay {USDC_AMOUNT} USDC & Mint NFT
           </button>
-        {/* )} */}
-      </section>
 
+          {/* NAIRA BUTTON */}
+          <button
+            onClick={handlePayNaira}
+            className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold shadow-xl hover:bg-green-700 hover:scale-105 transition"
+          >
+            Pay ₦{NAIRA_AMOUNT} & Mint NFT
+          </button>
+        </div>
+
+        {/* NOTE */}
+        <p className="text-sm text-gray-300 mt-8">
+          USDC payments require a connected wallet.  
+          Naira payments support local bank & card transfers.
+        </p>
+      </section>
     </main>
   )
 }
+

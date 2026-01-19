@@ -40,9 +40,9 @@
 import './globals.css'
 import { WagmiProvider } from 'wagmi'
 import { wagmiConfig } from '@/lib/wagmi'
-import Navbar from '@/components/navbar'
 
 import ToastProvider from '@/components/toastProvider';
+import { BlockchainProvider } from '@/blockchain/blockchainContext'
 
 export default function RootLayout({
   children,
@@ -53,13 +53,10 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen bg-gradient-to-br from-purple-700 via-indigo-700 to-blue-700 text-white">
         {/* <WagmiProvider config={wagmiConfig}> */}
-          {/* Global Navbar */}
-          {/* <Navbar /> */}
 
           {/* Page Content */}
-          {children}
+          <BlockchainProvider>{children}</BlockchainProvider>
         {/* </WagmiProvider> */}
-        {/* <ToastProvider /> */}
       </body>
     </html>
   )

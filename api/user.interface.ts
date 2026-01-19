@@ -17,3 +17,12 @@ export interface IVerifyEmail {
 export interface ICheckEmail {
     walletAddress: string;
 }
+
+export interface IInitNairaPayment {
+    walletAddress: string;
+    callback: string;
+}
+export interface IVerifyNairaPayment {
+    walletAddress: string;
+    reference: string;
+}
